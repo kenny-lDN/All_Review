@@ -1,0 +1,99 @@
+编译库
+
+$(1)-static: $$($(1)_LIB_FILE_A) ;
+
+$(1)-dynamic: $$($(1)_LIB_FILE_TAR_SO) ;
+
+静态库
+
+### have to keep the dependency lines from being too long
+$$($(1)_LIB_FILE_A): $$(TEMPLATE_BASEMKS)
+
+$$($(1)_LIB_FILE_A): $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_PBCOBJS) $$($(1)_PYCOBJS)
+ifeq ($(V),0)
+        @echo " [AR] $$(@F)"
+        @echo $$(AR) rc $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_PBCOBJS) $$($(1)_PYCOBJS) > $$@.cmd
+        @$$(RM) -f $$@ && $$(AR) rc $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_PBCOBJS) $$($(1)_PYCOBJS)
+else
+        $$(RM) -f $$@ && $$(AR) rc $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_PBCOBJS) $$($(1)_PYCOBJS)
+endif
+
+
+动态库
+### have to keep the dependency lines from being too long
+$$($(1)_LIB_FILE_TAR_SO): $$(TEMPLATE_BASEMKS)
+
+### we resolve the possible shared symbols - requires second expansion
+###   to be order-independent - 
+### create a symbolic in the targeted shared library directory
+$$($(1)_LIB_FILE_TAR_SO): $$($(1)_OBJS) $$($(1)_COMOBJS)  $$($(1)_PBCOBJS) $$($(1)_PYCOBJS) $$$$($(1)_LIBDEPS)
+ifeq ($(V),0)
+        @echo " [LD] $$(@F)"
+        @echo $$(CC) $$($(1)_LNKFLAGS) $$($(1)_SO_LDFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS)  $$($(1)_PBCOBJS) $$($(1)_PYCOBJS) $$($(1)_LDFLAGS) $$($(1)_LIB_SO_LINK) > $$@.cmd
+        @$$(CC) $$($(1)_LNKFLAGS) $$($(1)_SO_LDFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS)  $$($(1)_PBCOBJS) $$($(1)_PYCOBJS) \
+        $$($(1)_LDFLAGS) $$($(1)_LIB_SO_LINK)
+else
+        $$(CC) $$($(1)_LNKFLAGS) $$($(1)_SO_LDFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS)  $$($(1)_PBCOBJS) $$($(1)_PYCOBJS) \
+        $$($(1)_LDFLAGS) $$($(1)_LIB_SO_LINK)
+endif
+
+动态库符号链接
+### this is an install operation - check for resident library link
+$$($(1)_LIB_FILE_SO): $$($(1)_LIB_FILE_TAR_SO) | $(LIB_SO_INSTALL_DIR)
+ifeq ($(V),0)
+        @[ "$$@" -ef "$$^" ] || ln -s $$^ $$@
+else
+        [ "$$@" -ef "$$^" ] || ln -s $$^ $$@
+endif
+
+endif
+
+
+可执行文件
+
+ifneq ($(TEMPLATE_NO_TARGET_RULES),1)
+
+### have to keep the dependency lines from being too long
+$$($(1)_EXEC): $$(TEMPLATE_BASEMKS)
+$$($(1)_EXEC): $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LIBDEPS)
+
+ifeq ($$($(1)_CPPDYN), 1)
+$$($(1)_EXEC): 
+ifeq ($(V),0)
+        @echo " [LD]       $$(@F)"
+        @echo $$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS) > $$@.cmd
+        @$$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+else
+        $$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+endif
+
+else ifeq ($$($(1)_CCSTATIC), 1)
+$$($(1)_BIN)/libstdc++.a:
+        ln -s `$$(CXX) $$($(1)_LNKFLAGS) -print-file-name=libstdc++.a` $$($(1)_BIN)/
+
+$$($(1)_EXEC): $$($(1)_BIN)/libstdc++.a
+ifeq ($(V),0)
+        @echo " [LD]       $$(@F)"
+        @echo $$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS) > $$@.cmd
+        @$$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+else
+        $$(CXX) $$($(1)_LNKFLAGS) -L$$($(1)_BIN)/ -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+endif
+
+else # C linker
+$$($(1)_EXEC):
+ifeq ($(filter $(1), $(CSHELL_TARGET)), ) # Without cshell
+ifeq ($(V),0)
+        @echo " [LD]       $$(@F)"
+        @echo $$(CC) $$($(1)_LNKFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS) > $$@.cmd
+        @$$(CC) $$($(1)_LNKFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+else
+        $$(CC) $$($(1)_LNKFLAGS) -o $$@ $$($(1)_OBJS) $$($(1)_COMOBJS) $$($(1)_LDFLAGS)
+endif
+
+关于cshell
+huangzhen@bird makerules $ grep -rn CSHELL_TARGET /vob/hz/vccap
+/vob/hz/vccap/dcts/dpoe/src/dpoe.mk:6:CSHELL_TARGET=$(dpoe_PROGRAM)
+/vob/hz/vccap/dcts/dpoe/vCM/vCM.mk:42:CSHELL_TARGET +=$(vCM_PROGRAM)
+/vob/hz/vccap/casa/makerules/program_template.mk:255:ifeq ($(filter $(1), $(CSHELL_TARGET)), ) # Without cshell
+huangzhen@bird makerules $ 

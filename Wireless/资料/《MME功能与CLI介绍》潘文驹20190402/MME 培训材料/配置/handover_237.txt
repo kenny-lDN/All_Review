@@ -1,0 +1,53 @@
+conf
+no lte mme
+！
+diameter-endpoint mmes6a
+no peer host HSSServer.casa.com realm epc.mnc001.mcc460.3gppnetwork.org 
+exit
+
+no diameter-endpoint mmes6a
+
+diameter-endpoint mmes6a
+  origin host MME237.Spirent.com realm epc.mnc001.mcc460.3gppnetwork.org gige 0/1
+  peer host HSSServer.casa.com realm epc.mnc001.mcc460.3gppnetwork.org ipv4 172.1.10.41 port 3868 tcp 
+  route-entry realm epc.mnc001.mcc460.3gppnetwork.org app s6a peer host HSSServer.casa.com weight 50
+  peer-re timer 2
+  exit
+!
+no lte-service mme
+lte-service mme 
+  tai-list-cfg tlc01
+    tai mcc 460 mnc 01 tac 1
+    exit 
+  tai-list-cfg tlc02
+    tai mcc 460 mnc 01 tac 2
+    exit 
+  call-profile 1
+    integrity-algorithm preference EIA1
+    ciphering-algorithm preference EEA0
+    exit
+  tai-profile taipf01
+    sgw-selection-profile preference 10
+      tai-list tlc01
+      sgw-address 172.1.84.44
+      exit 
+    sgw-selection-profile preference 20
+      tai-list tlc02
+      sgw-address 172.1.84.45
+      exit 
+    exit 
+  mme-service mme1
+    mme-plmn-id mcc 460 mnc 01 group-id 237 mme-code 237
+    s1mme-interface gige 1 ipv4 sctp-port 36412 
+    s10-interface gige 1 ipv4
+    s11-interface gige 1 ipv4 
+    s6a-interface diameter-endpoint mmes6a destination-realm epc.mnc001.mcc460.3gppnetwork.org 
+    associate call-profile 1
+    associate tai-profile taipf01
+    default-pgw 172.1.83.43
+    default-sgw 172.1.84.44
+    default-peer-mme 172.1.10.233
+    exit 
+  exit
+exit
+!
